@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Musical Chairs - Automatic</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            overflow: hidden;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            max-width: 500px;
+            width: 90%;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .status {
+            font-size: 1.8rem;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 15px;
+            transition: all 0.3s ease;
+            font-weight: bold;
+        }
+
+        .status.playing {
+            background: rgba(76, 175, 80, 0.3);
+            animation: musicBeat 0.5s ease-in-out infinite alternate;
+        }
+
+        .status.stopped {
+            background: rgba(244, 67, 54, 0.3);
+            animation: stopFlash 0.8s ease-in-out infinite;
+        }
+
+        @keyframes musicBeat {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.02); }
+        }
+
+        @keyframes stopFlash {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .controls {
+            margin: 30px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        button {
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            border: none;
+            border-radius: 50px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .file-input-container {
+            margin: 20px 0;
+            position: relative;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-input-label {
+            display: inline-block;
+            padding: 12px 25px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 2px dashed rgba(255, 255, 255, 0.5);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .file-input-label:hover {
+            background: rgba(255, 255, 255, 0.25);
+            border-color: rgba(255, 255, 255, 0.8);
+        }
+
+        .song-info {
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            font-size: 1.1rem;
+        }
+
+        .timer-display {
+            font-size: 1.5rem;
+            margin: 15px 0;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .settings {
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 10px 0;
+        }
+
+        input[type="range"] {
+            width: 60%;
+        }
+
+        .floating-notes {
+            position: fixed;
+            font-size: 2rem;
+            color: rgba(255, 255, 255, 0.6);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(100vh) rotate(0deg);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-100px) rotate(360deg);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="floating-notes" id="floatingNotes"></div>
+    
+    <div class="container">
+        <h1>🎵 Musical Chairs 🎵</h1>
+        
+        <div class="file-input-container">
+            <input type="file" id="audioFiles" class="file-input" multiple accept="audio/*" webkitdirectory>
+            <label for="audioFiles" class="file-input-label">
+                📁 Select Music Folder
+            </label>
+        </div>
+        
+        <div class="song-info" id="songInfo">
+            No songs loaded. Please select a folder with music files.
+        </div>
+        
+        <div class="status" id="status">Ready to Start</div>
+        
+        <div class="timer-display" id="timer">⏱️ 00:00</div>
+        
+        <div class="controls">
+            <button id="startBtn" onclick="startGame()">🎮 Start Musical Chairs</button>
+            <button id="stopBtn" onclick="stopGame()" disabled>⏹️ Stop Game</button>
+            <button id="nextBtn" onclick="nextSong()" disabled>⏭️ Skip Song</button>
+        </div>
+        
+        <div class="settings">
+            <h3>Game Settings</h3>
+            <div class="setting-item">
+                <label>Min Play Time (seconds):</label>
+                <input type="range" id="minTime" min="5" max="30" value="10">
+                <span id="minTimeValue">10</span>
+            </div>
+            <div class="setting-item">
+                <label>Max Play Time (seconds):</label>
+                <input type="range" id="maxTime" min="15" max="60" value="30">
+                <span id="maxTimeValue">30</span>
+            </div>
+            <div class="setting-item">
+                <label>Stop Duration (seconds):</label>
+                <input type="range" id="stopDuration" min="3" max="15" value="5">
+                <span id="stopDurationValue">5</span>
+            </div>
+            <div class="setting-item">
+                <label>Volume:</label>
+                <input type="range" id="volume" min="0" max="100" value="70">
+                <span id="volumeValue">70%</span>
+            </div>
+        </div>
+    </div>
+
+    <audio id="audioPlayer" preload="auto"></audio>
+
+    <script>
+        let songs = [];
+        let currentSongIndex = 0;
+        let isPlaying = false;
+        let gameActive = false;
+        let playTimeout = null;
+        let stopTimeout = null;
+        let startTime = null;
+        let timerInterval = null;
+
+        const audioPlayer = document.getElementById('audioPlayer');
+        const status = document.getElementById('status');
+        const songInfo = document.getElementById('songInfo');
+        const timer = document.getElementById('timer');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const nextBtn = document.getElementById('nextBtn');
+
+        // Settings elements
+        const minTime = document.getElementById('minTime');
+        const maxTime = document.getElementById('maxTime');
+        const stopDuration = document.getElementById('stopDuration');
+        const volume = document.getElementById('volume');
+        const minTimeValue = document.getElementById('minTimeValue');
+        const maxTimeValue = document.getElementById('maxTimeValue');
+        const stopDurationValue = document.getElementById('stopDurationValue');
+        const volumeValue = document.getElementById('volumeValue');
+
+        // Update setting displays
+        minTime.oninput = () => minTimeValue.textContent = minTime.value;
+        maxTime.oninput = () => maxTimeValue.textContent = maxTime.value;
+        stopDuration.oninput = () => stopDurationValue.textContent = stopDuration.value;
+        volume.oninput = () => {
+            volumeValue.textContent = volume.value + '%';
+            audioPlayer.volume = volume.value / 100;
+        };
+
+        // File input handler
+        document.getElementById('audioFiles').addEventListener('change', function(e) {
+            const files = Array.from(e.target.files);
+            songs = files.filter(file => file.type.startsWith('audio/'));
+            
+            if (songs.length > 0) {
+                songInfo.textContent = `Loaded ${songs.length} songs from folder`;
+                startBtn.disabled = false;
+                shuffleSongs();
+            } else {
+                songInfo.textContent = 'No audio files found in selected folder';
+                startBtn.disabled = true;
+            }
+        });
+
+        function shuffleSongs() {
+            for (let i = songs.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [songs[i], songs[j]] = [songs[j], songs[i]];
+            }
+            currentSongIndex = 0;
+        }
+
+        function startGame() {
+            if (songs.length === 0) return;
+            
+            gameActive = true;
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            nextBtn.disabled = false;
+            
+            audioPlayer.volume = volume.value / 100;
+            playNextSong();
+            createFloatingNotes();
+        }
+
+        function stopGame() {
+            gameActive = false;
+            isPlaying = false;
+            
+            clearTimeout(playTimeout);
+            clearTimeout(stopTimeout);
+            clearInterval(timerInterval);
+            
+            audioPlayer.pause();
+            audioPlayer.currentTime = 0;
+            
+            status.textContent = 'Game Stopped';
+            status.className = 'status';
+            timer.textContent = '⏱️ 00:00';
+            
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            nextBtn.disabled = true;
+        }
+
+        function playNextSong() {
+            if (!gameActive) return;
+            
+            if (currentSongIndex >= songs.length) {
+                shuffleSongs();
+            }
+            
+            const currentSong = songs[currentSongIndex];
+            audioPlayer.src = URL.createObjectURL(currentSong);
+            
+            audioPlayer.play().then(() => {
+                isPlaying = true;
+                status.textContent = '🎵 MUSIC PLAYING - DANCE! 🎵';
+                status.className = 'status playing';
+                songInfo.textContent = `Now Playing: ${currentSong.name.replace(/\.[^/.]+$/, "")}`;
+                
+                startTimer();
+                
+                // Random play duration
+                const minMs = parseInt(minTime.value) * 1000;
+                const maxMs = parseInt(maxTime.value) * 1000;
+                const playDuration = Math.random() * (maxMs - minMs) + minMs;
+                
+                playTimeout = setTimeout(() => {
+                    stopMusic();
+                }, playDuration);
+                
+            }).catch(err => {
+                console.log('Error playing audio:', err);
+                nextSong();
+            });
+            
+            currentSongIndex++;
+        }
+
+        function stopMusic() {
+            if (!gameActive) return;
+            
+            audioPlayer.pause();
+            isPlaying = false;
+            
+            status.textContent = '⏹️ MUSIC STOPPED - FIND A CHAIR! ⏹️';
+            status.className = 'status stopped';
+            
+            clearInterval(timerInterval);
+            timer.textContent = '⏱️ STOPPED!';
+            
+            // Wait for stop duration, then resume
+            const stopMs = parseInt(stopDuration.value) * 1000;
+            stopTimeout = setTimeout(() => {
+                if (gameActive) {
+                    playNextSong();
+                }
+            }, stopMs);
+        }
+
+        function nextSong() {
+            clearTimeout(playTimeout);
+            clearTimeout(stopTimeout);
+            
+            if (gameActive) {
+                playNextSong();
+            }
+        }
+
+        function startTimer() {
+            startTime = Date.now();
+            timerInterval = setInterval(() => {
+                if (isPlaying) {
+                    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                    const minutes = Math.floor(elapsed / 60);
+                    const seconds = elapsed % 60;
+                    timer.textContent = `⏱️ ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                }
+            }, 100);
+        }
+
+        function createFloatingNotes() {
+            const notes = ['♪', '♫', '♬', '🎵', '🎶', '🎼'];
+            
+            setInterval(() => {
+                if (gameActive && isPlaying) {
+                    const note = document.createElement('div');
+                    note.className = 'floating-notes';
+                    note.textContent = notes[Math.floor(Math.random() * notes.length)];
+                    note.style.left = Math.random() * 100 + 'vw';
+                    note.style.animationDuration = (Math.random() * 3 + 4) + 's';
+                    note.style.animation = 'float linear infinite';
+                    
+                    document.getElementById('floatingNotes').appendChild(note);
+                    
+                    setTimeout(() => {
+                        note.remove();
+                    }, 7000);
+                }
+            }, 500);
+        }
+
+        // Handle audio ended
+        audioPlayer.addEventListener('ended', () => {
+            if (gameActive) {
+                nextSong();
+            }
+        });
+
+        // Initialize volume
+        audioPlayer.volume = 0.7;
+    </script>
+</body>
+</html>
