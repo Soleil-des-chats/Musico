@@ -205,10 +205,13 @@
         <h1>🎵 Musical Chairs 🎵</h1>
         
         <div class="file-input-container">
-            <input type="file" id="audioFiles" class="file-input" multiple accept="audio/*" webkitdirectory>
+            <input type="file" id="audioFiles" class="file-input" multiple accept="audio/*">
             <label for="audioFiles" class="file-input-label">
-                📁 Select Music Folder
+                🎵 Select Music Files
             </label>
+            <button onclick="loadUploadedFiles()" class="file-input-label" style="margin-left: 10px;">
+                📂 Use Uploaded Files
+            </button>
         </div>
         
         <div class="song-info" id="songInfo">
@@ -295,14 +298,58 @@
             songs = files.filter(file => file.type.startsWith('audio/'));
             
             if (songs.length > 0) {
-                songInfo.textContent = `Loaded ${songs.length} songs from folder`;
+                songInfo.textContent = `Loaded ${songs.length} songs`;
                 startBtn.disabled = false;
                 shuffleSongs();
             } else {
-                songInfo.textContent = 'No audio files found in selected folder';
+                songInfo.textContent = 'No audio files selected. Please choose music files.';
                 startBtn.disabled = true;
             }
         });
+
+        // Function to load uploaded files from conversation
+        async function loadUploadedFiles() {
+            try {
+                // Try to detect and load audio files that were uploaded to the conversation
+                const audioExtensions = ['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac'];
+                const uploadedSongs = [];
+                
+                // This will attempt to find uploaded audio files
+                // Note: This is a simplified approach - in a real implementation,
+                // you'd need to know the exact filenames
+                songInfo.textContent = 'Scanning for uploaded audio files...';
+                
+                // For demonstration, let's try some common audio file names
+                const commonNames = [
+                    'song1.mp3', 'song2.mp3', 'music1.mp3', 'music2.mp3',
+                    'track1.mp3', 'track2.mp3', 'audio1.wav', 'audio2.wav',
+                    'music.mp3', 'song.mp3', 'track.mp3', 'audio.mp3'
+                ];
+                
+                for (const filename of commonNames) {
+                    try {
+                        const data = await window.fs.readFile(filename);
+                        const blob = new Blob([data], { type: 'audio/mpeg' });
+                        const file = new File([blob], filename, { type: 'audio/mpeg' });
+                        uploadedSongs.push(file);
+                    } catch (err) {
+                        // File doesn't exist, continue
+                    }
+                }
+                
+                if (uploadedSongs.length > 0) {
+                    songs = uploadedSongs;
+                    songInfo.textContent = `Found and loaded ${songs.length} uploaded audio files!`;
+                    startBtn.disabled = false;
+                    shuffleSongs();
+                } else {
+                    songInfo.textContent = 'No uploaded audio files found. Please upload audio files first or use "Select Music Files".';
+                }
+            } catch (error) {
+                songInfo.textContent = 'Error loading uploaded files. Please use "Select Music Files" instead.';
+                console.error('Error loading uploaded files:', error);
+            }
+        }
 
         function shuffleSongs() {
             for (let i = songs.length - 1; i > 0; i--) {
